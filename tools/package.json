@@ -1,0 +1,13 @@
+{
+  "name": "wsp-survey-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WSP Radar survey site (GitHub Pages). JSX is pre-compiled; no in-browser Babel.",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@babel/preset-react": "^7.26.0"
+  }
+}
