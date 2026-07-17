@@ -9,7 +9,14 @@
         };
         const CONFIG = typeof WSP_CONFIG !== 'undefined' ? WSP_CONFIG : ERROR_CONFIG;
         const { useState, useEffect, useRef } = React;
-        const QUESTIONS = CONFIG.QUESTIONS;
+        // 回答者モード（v2）: "employee"（社員・既定） | "candidate"（採用候補者）
+        // candidate では employeeOnly:true の設問を除外、employee では candidateOnly:true の設問を除外。
+        // v1 config（フラグ無し）では全問表示となり、挙動は従来と同一。
+        const MODE = CONFIG.RESPONDENT_MODE === 'candidate' ? 'candidate' : 'employee';
+        const QUESTIONS = CONFIG.QUESTIONS.filter(q => MODE === 'candidate' ? !q.employeeOnly : !q.candidateOnly);
+        // トップ説明文: candidate用の文言があれば切替。"{N}" は表示対象の設問数に置換。
+        const TOP_DESC = ((MODE === 'candidate' && CONFIG.TOP_DESCRIPTION_CANDIDATE) ? CONFIG.TOP_DESCRIPTION_CANDIDATE : CONFIG.TOP_DESCRIPTION)
+            .replace('{N}', String(QUESTIONS.length));
         const ChevronRight = ({ className }) => (
             <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
         );
@@ -76,6 +83,7 @@
                     "役職": profile.title || "",
                     "姓": profile.lastName || "",
                     "名": profile.firstName || "",
+                    "回答モード": MODE === 'candidate' ? '候補者' : '社員',
                     "日時": new Date().toLocaleString('ja-JP')
                 };
                 QUESTIONS.forEach(q => {
@@ -94,6 +102,7 @@
                 const payload = {
                     projectId: CONFIG.PROJECT_ID,
                     surveyKind: CONFIG.SURVEY_KIND || "Individual",
+                    respondentMode: MODE,
                     answers: formattedAnswers
                 };
                 try {
@@ -123,7 +132,7 @@
                     <p
                         style={{ textShadow: 'none' }}
                         className={`max-w-2xl mx-auto font-light leading-[2.2] tracking-widest text-sm md:text-lg mb-16 text-center ${CONFIG === ERROR_CONFIG ? 'text-red-500' : 'text-gray-600'}`}>
-                        {CONFIG.TOP_DESCRIPTION.split('\n').map((line, index) => (
+                        {TOP_DESC.split('\n').map((line, index) => (
                             <React.Fragment key={index}>
                                 {line}<br className="hidden md:block" />
                             </React.Fragment>
@@ -160,9 +169,15 @@
                             </div>
                             <div className="text-[10px] text-art-muted/70 text-center mt-2">↑「ややそう思う」なら 4 を選択</div>
                         </div>
-                        <p className="text-sm md:text-base text-art-muted leading-relaxed mb-2">
-                            本サーベイは2つの層を見ます ─ <span className="text-art-accentYellow">あなたの強み</span> と、その強みを解き放つ／天井にしている <span className="text-art-accentPeach">無自覚な「当たり前」</span>。
-                        </p>
+                        {CONFIG.LAYERS === 3 ? (
+                            <p className="text-sm md:text-base text-art-muted leading-relaxed mb-2">
+                                本サーベイは3つの層を見ます ─ <span className="text-art-accentYellow">あなたの強み</span>、その強みを解き放つ／天井にしている <span className="text-art-accentPeach">無自覚な「当たり前」</span>、そして <span className="text-art-accentGreen">あなたを動かす動機</span>。
+                            </p>
+                        ) : (
+                            <p className="text-sm md:text-base text-art-muted leading-relaxed mb-2">
+                                本サーベイは2つの層を見ます ─ <span className="text-art-accentYellow">あなたの強み</span> と、その強みを解き放つ／天井にしている <span className="text-art-accentPeach">無自覚な「当たり前」</span>。
+                            </p>
+                        )}
                         <p className="text-xs md:text-sm text-art-muted/80 italic mb-6">※ 深く悩まず、最初に思い浮かんだ感覚でお選びください。</p>
                         <div className="flex justify-end">
                             <button onClick={() => { if (isAnimating) return; setIsAnimating(true); setTimeout(() => { setShowOrientation(false); setCurrentStep(0); setIsAnimating(false); }, 600); }} className="px-10 py-3 border border-art-accentYellow text-art-accentYellow hover:bg-art-accentYellow hover:text-white transition-all uppercase tracking-widest text-sm">
@@ -178,9 +193,17 @@
                         <span className="text-art-accentPeach text-xs uppercase mb-3 tracking-widest block">Before you begin</span>
                         <h2 className="text-xl md:text-2xl font-normal text-art-text mb-6 leading-snug tracking-wide">はじめにお読みください</h2>
                         <p className="text-sm md:text-base text-art-text leading-[2] mb-8">
-                            このサーベイは、あなたを評価・査定するためのものではありません。<br/>
-                            あなたの強みを見つけ、その強みをさらに伸ばすためのヒントをフィードバックすることが目的です。<br/>
-                            正解・不正解はありません。どうか、正直に、ありのままの感覚でお答えください。
+                            {(MODE === 'candidate' && CONFIG.INTRO_TEXT_CANDIDATE) ? (
+                                CONFIG.INTRO_TEXT_CANDIDATE.split('\n').map((line, index) => (
+                                    <React.Fragment key={index}>{line}<br/></React.Fragment>
+                                ))
+                            ) : (
+                                <React.Fragment>
+                                    このサーベイは、あなたを評価・査定するためのものではありません。<br/>
+                                    あなたの強みを見つけ、その強みをさらに伸ばすためのヒントをフィードバックすることが目的です。<br/>
+                                    正解・不正解はありません。どうか、正直に、ありのままの感覚でお答えください。
+                                </React.Fragment>
+                            )}
                         </p>
                         <div className="flex justify-end">
                             <button onClick={() => { if (isAnimating) return; setIsAnimating(true); setTimeout(() => { setShowIntro(false); setShowProfile(true); setIsAnimating(false); }, 600); }} className="px-10 py-3 border border-art-accentYellow text-art-accentYellow hover:bg-art-accentYellow hover:text-white transition-all uppercase tracking-widest text-sm">次へ</button>
@@ -393,7 +416,7 @@
                             <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
                                 <h2 className="text-5xl md:text-8xl font-light text-gradient mb-8 tracking-tighter">ありがとうございました</h2>
                                 <p className="text-art-muted text-lg tracking-widest leading-relaxed">貴重なご意見をいただき、心より感謝申し上げます。<br/>集計後、AIによる分析を行い、組織変革に活用させていただきます。</p>
-                            </div>
+                                  </div>
                         )}
                     </main>
                     {currentStep === -1 && !showOrientation && (
@@ -420,4 +443,3 @@
         }
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
-    
