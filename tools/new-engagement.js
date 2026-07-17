@@ -9,6 +9,10 @@
  *     --service organization --country indonesia --company acme --year 2026 \
  *     --company-name "PT ACME Indonesia"
  *
+ * オプション（individual v2）:
+ *   --with-candidate   採用候補者モードのサブフォルダ <.../year>/candidate/ も生成する。
+ *                      候補者モードは PROJECT_ID に _CAND を付与し、記録先スプレッドシートを分離する。
+ *
  * 生成後: git add -A && git commit -m "..." && git push  でGitHub Pagesに公開。
  */
 const fs = require('fs');
@@ -57,13 +61,29 @@ fs.copyFileSync(path.join(srcDir, 'index.html'), path.join(destDir, 'index.html'
 fs.copyFileSync(path.join(srcDir, 'app.js'),     path.join(destDir, 'app.js'));
 
 // config.js はテンプレを読み、PROJECT_ID / SURVEY_KIND / COMPANY を差し替え
+// ※ 行頭アンカー(^\s*)付きで置換する（コメント内の同名文字列への誤マッチを防ぐ）
 let cfg = fs.readFileSync(path.join(srcDir, 'config.js'), 'utf8');
-cfg = cfg.replace(/PROJECT_ID:\s*"[^"]*"/, `PROJECT_ID: "${projectId}"`);
-if (/SURVEY_KIND:\s*"/.test(cfg)) cfg = cfg.replace(/SURVEY_KIND:\s*"[^"]*"/, `SURVEY_KIND: "${KIND}"`);
-else cfg = cfg.replace(/(PROJECT_ID:\s*"[^"]*",)/, `$1\n    SURVEY_KIND: "${KIND}",`);
-if (/COMPANY:\s*"/.test(cfg)) cfg = cfg.replace(/COMPANY:\s*"[^"]*"/, `COMPANY: "${companyName}"`);
-else cfg = cfg.replace(/(PROJECT_ID:\s*"[^"]*",)/, `$1\n    COMPANY: "${companyName}",`);
+cfg = cfg.replace(/^(\s*)PROJECT_ID:\s*"[^"]*"/m, `$1PROJECT_ID: "${projectId}"`);
+if (/^\s*SURVEY_KIND:\s*"/m.test(cfg)) cfg = cfg.replace(/^(\s*)SURVEY_KIND:\s*"[^"]*"/m, `$1SURVEY_KIND: "${KIND}"`);
+else cfg = cfg.replace(/^(\s*)(PROJECT_ID:\s*"[^"]*",)/m, `$1$2\n$1SURVEY_KIND: "${KIND}",`);
+if (/^\s*COMPANY:\s*"/m.test(cfg)) cfg = cfg.replace(/^(\s*)COMPANY:\s*"[^"]*"/m, `$1COMPANY: "${companyName}"`);
+else cfg = cfg.replace(/^(\s*)(PROJECT_ID:\s*"[^"]*",)/m, `$1$2\n$1COMPANY: "${companyName}",`);
 fs.writeFileSync(path.join(destDir, 'config.js'), cfg);
+
+// --with-candidate: 採用候補者モードのサブフォルダを生成（individual v2）
+const withCandidate = process.argv.includes('--with-candidate');
+if (withCandidate) {
+  const candDir = path.join(destDir, 'candidate');
+  fs.mkdirSync(candDir, { recursive: true });
+  fs.copyFileSync(path.join(srcDir, 'index.html'), path.join(candDir, 'index.html'));
+  fs.copyFileSync(path.join(srcDir, 'app.js'),     path.join(candDir, 'app.js'));
+  let candCfg = fs.readFileSync(path.join(destDir, 'config.js'), 'utf8');
+  candCfg = candCfg.replace(/^(\s*)PROJECT_ID:\s*"([^"]*)"/m, '$1PROJECT_ID: "$2_CAND"');
+  if (/^\s*RESPONDENT_MODE:\s*"/m.test(candCfg)) candCfg = candCfg.replace(/^(\s*)RESPONDENT_MODE:\s*"[^"]*"/m, '$1RESPONDENT_MODE: "candidate"');
+  else candCfg = candCfg.replace(/^(\s*)(SURVEY_KIND:\s*"[^"]*",)/m, '$1$2\n$1RESPONDENT_MODE: "candidate",');
+  fs.writeFileSync(path.join(candDir, 'config.js'), candCfg);
+  console.log('  候補者モード: ' + path.relative(ROOT, candDir).replace(/\\/g, '/') + '/（PROJECT_ID: ' + projectId + '_CAND）');
+}
 
 const url = `https://survey.ws-partners.com.sg/${service}/${country}/${company}/${year}/`;
 console.log('✅ 生成しました');
