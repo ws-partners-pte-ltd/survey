@@ -25,7 +25,7 @@
  */
 const WSP_CONFIG = {
     PROJECT_ID: "STRENGTHS_UNLOCKING_v2_2026",
-    COMPANY: "WSP SAMPLE (v2)",
+    COMPANY: "",
     SURVEY_KIND: "Individual",
     RESPONDENT_MODE: "employee",
     LAYERS: 3,
