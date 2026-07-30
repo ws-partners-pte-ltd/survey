@@ -1,30 +1,30 @@
 /**
- * WSP Radar - 強み解放サーベイ v2 (Strengths Unlocking Survey)
+ * WSP Radar - 強み解放サーベイ v3 (Strengths Unlocking Survey)
  *
- * ── v2 仕様（2026/7 アップデート仕様提案に基づく）──
+ * ── v3 仕様（2026/7 v3アップデート仕様提案に基づく。スコア対象設問はv2と同一）──
  * 第1層 強みプロファイル（Big Five系）25問            …v1から変更なし
  * 第2層 当たり前マップ（成長観・統制感・挑戦観・役割観）16問 …v1から変更なし
  * 第3層 動機・志向（達成・親和・影響）15問              …NEW
  * 成長要素（学習俊敏性・FB受容・経験からの学び）8問       …NEW
  * 現地化の当たり前 6問（社員モードのみ）                …v1から変更なし
  * 信頼性指標 8問（一貫性 C_1〜C_3、ライスケール V_1〜V_5）
- * 自由記述 3問（FT_3は社員／候補者で差し替え）
+ * 解き放ちたい力 選択式1問＋一言（社員のみ）／文章完成法 1問（社員・候補者で差し替え）
  *
- * 社員モード計 81問（約25〜30分）／候補者モード計 75問（約25分）
+ * 社員モード計 81問（約25〜30分）／候補者モード計 73問（約25分）
  *
  * ── 回答者モード ──
  * RESPONDENT_MODE: "employee"（社員） | "candidate"（採用候補者）
  *   candidate では employeeOnly:true の設問（現地化の当たり前・FT_3）が非表示になり、
  *   candidateOnly:true の設問（FT_3c）が表示される。
  *   ※ モードごとに PROJECT_ID を分け、記録先スプレッドシートを分離すること
- *     （例: STRENGTHS_UNLOCKING_v2_2026 / STRENGTHS_UNLOCKING_v2_2026_CAND）。
+ *     （例: STRENGTHS_UNLOCKING_v3_2026 / STRENGTHS_UNLOCKING_v3_2026_CAND）。
  *
  * ★印は逆転設問（高スコアが「天井になっている前提」を示す。集計時に反転処理）。
  *   ※回答画面には ★ は表示しない。反転はスプレッドシート/レポート側で処理する。
  * TOP_DESCRIPTION 内の {N} は表示時に実際の設問数へ自動置換される。
  */
 const WSP_CONFIG = {
-    PROJECT_ID: "STRENGTHS_UNLOCKING_v2_2026",
+    PROJECT_ID: "STRENGTHS_UNLOCKING_v3_2026",
     SURVEY_KIND: "Individual",
     RESPONDENT_MODE: "employee",
     LAYERS: 3,
@@ -32,7 +32,7 @@ const WSP_CONFIG = {
     TOP_DESCRIPTION:
         "正解・不正解はありません。\n" +
         "日頃の実感に最も近いものを、5段階でお選びください。\n" +
-        "あなたの強み、無自覚な前提（当たり前）、そしてあなたを動かす動機を見える化します。\n" +
+        "変わりにくい持ち味（強み）を活かし、変えられる前提（当たり前）と習慣を動かすためのサーベイです。\n" +
         "全{N}問・所要時間 約25〜30分。",
     TOP_DESCRIPTION_CANDIDATE:
         "正解・不正解はありません。\n" +
@@ -136,10 +136,15 @@ const WSP_CONFIG = {
         { id:"A_5", type:"scale", category:"現地化の当たり前", employeeOnly:true, question:"言葉や文化の壁は、自分の工夫しだいで乗り越えられる", minLabel:"全くそう思わない", maxLabel:"非常にそう思う", scaleMax:5 },
         { id:"A_6", type:"scale", category:"現地化の当たり前", employeeOnly:true, question:"経営層・上司に対して、自分の意見や懸念を率直に伝えられる", minLabel:"全くそう思わない", maxLabel:"非常にそう思う", scaleMax:5 },
         { id:"V_4", type:"scale", category:"信頼性指標", question:"約束や締め切りを破ったことは、これまで一度もない", minLabel:"全くそう思わない", maxLabel:"非常にそう思う", scaleMax:5 },
-        // ===== 自由記述 =====
-        { id:"FT_1", type:"text", category:"自由記述", question:"あなたが「自分には難しい／できない」と思い込んでいることの中で、本当はできるかもしれないと感じることは何ですか？", placeholder:"自由にご記入ください..." },
-        { id:"FT_2", type:"text", category:"自由記述", question:"あなたの強みを今より発揮するために、職場で変えたい「当たり前」があれば教えてください。", placeholder:"自由にご記入ください..." },
-        { id:"FT_3", type:"text", category:"自由記述", employeeOnly:true, question:"最近、自分の前提や思い込みが「実は違った」と気づいた経験があれば教えてください。（任意）", placeholder:"空欄のままスキップできます", optional:true },
-        { id:"FT_3c", type:"text", category:"自由記述", candidateOnly:true, question:"これまでで最も挑戦的だった仕事・経験と、そこから学んだことを教えてください。また、今後挑戦してみたい仕事や環境があれば教えてください。", placeholder:"自由にご記入ください..." }
+        // ===== 解き放ちたい力（v3: 選択式＋任意一言）=====
+        { id:"FT_A1", type:"choice", category:"解き放ちたい力", employeeOnly:true, question:"14の力のうち、いま最も「解き放ちたい・伸ばしたい」と感じるものを1つ選んでください。", options:[
+            { label:"挑戦心・好奇心" }, { label:"完遂力・自己管理" }, { label:"発信力・主導性" }, { label:"協働性・共感力" }, { label:"冷静さ・回復力" },
+            { label:"成長マインドセット" }, { label:"主体性・統制感" }, { label:"挑戦・失敗のとらえ方" }, { label:"ジョブ・クラフティング" }, { label:"当事者意識・キャリア展望" },
+            { label:"達成への動機" }, { label:"人とつながる動機" }, { label:"人や組織を動かす動機" }, { label:"経験から学ぶ力" }
+        ] },
+        { id:"FT_A2", type:"text", category:"解き放ちたい力", employeeOnly:true, question:"その力を発揮することを妨げているものがあれば、一言で教えてください。（任意）", placeholder:"例：時間がない／失敗が怖い／自分の役割ではないと感じる など", optional:true },
+        // ===== 文章完成法（v3）=====
+        { id:"FT_B", type:"text", category:"自由記述", employeeOnly:true, question:"次の文を完成させてください。 「もし失敗や周囲の目を気にしなくてよいなら、私は仕事で ＿＿＿ に挑戦してみたい」", placeholder:"＿＿＿に入る言葉をご記入ください" },
+        { id:"FT_Bc", type:"text", category:"自由記述", candidateOnly:true, question:"次の文を完成させてください。 「もしこの会社に入ったら、私は ＿＿＿ に挑戦してみたい」", placeholder:"＿＿＿に入る言葉をご記入ください" }
     ]
 };
