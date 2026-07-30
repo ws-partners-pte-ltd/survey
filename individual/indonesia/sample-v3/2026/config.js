@@ -138,7 +138,7 @@ const WSP_CONFIG = {
         { id:"A_6", type:"scale", category:"現地化の当たり前", employeeOnly:true, question:"経営層・上司に対して、自分の意見や懸念を率直に伝えられる", minLabel:"全くそう思わない", maxLabel:"非常にそう思う", scaleMax:5 },
         { id:"V_4", type:"scale", category:"信頼性指標", question:"約束や締め切りを破ったことは、これまで一度もない", minLabel:"全くそう思わない", maxLabel:"非常にそう思う", scaleMax:5 },
         // ===== 解き放ちたい力（v3: 選択式＋任意一言）=====
-        { id:"FT_A1", type:"choice", category:"解き放ちたい力", employeeOnly:true, question:"14の力のうち、いま最も「解き放ちたい・伸ばしたい」と感じるものを1つ選んでください。", options:[
+        { id:"FT_A1", type:"multiChoice", category:"解き放ちたい力", employeeOnly:true, question:"14の力のうち、いま「解き放ちたい・伸ばしたい」と感じるものを選んでください。（複数選択可・最大3つ目安）", options:[
             { label:"挑戦心・好奇心" }, { label:"完遂力・自己管理" }, { label:"発信力・主導性" }, { label:"協働性・共感力" }, { label:"冷静さ・回復力" },
             { label:"成長マインドセット" }, { label:"主体性・統制感" }, { label:"挑戦・失敗のとらえ方" }, { label:"ジョブ・クラフティング" }, { label:"当事者意識・キャリア展望" },
             { label:"達成への動機" }, { label:"人とつながる動機" }, { label:"人や組織を動かす動機" }, { label:"経験から学ぶ力" }
