@@ -120,6 +120,26 @@ function App() {
       token: token,
       answers: formattedAnswers
     };
+    if (!CONFIG.VERIFY_SUBMIT) {
+      try {
+        await fetch(URL, {
+          method: "POST",
+          mode: "no-cors",
+          cache: "no-cache",
+          headers: {
+            "Content-Type": "text/plain"
+          },
+          body: JSON.stringify(payload)
+        });
+        setTimeout(() => handleNext(), 500);
+      } catch (e) {
+        console.error("Fetch Error:", e);
+        setSubmitError("送信中にネットワークエラーが発生しました。通信環境をご確認のうえ、もう一度 SUBMIT を押してください。");
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
     try {
       const res = await fetch(URL, {
         method: "POST",
