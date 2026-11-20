@@ -39,15 +39,13 @@ function App() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showOrientation, setShowOrientation] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const handleNext = (force = false) => {
     if (isAnimating) return;
     if (force !== true && currentStep >= 0 && currentStep < QUESTIONS.length) {
       const qId = QUESTIONS[currentStep].id;
       const val = answers[qId];
-      if (val === undefined || val === null) return;
-      if (typeof val === 'string' && !val.trim()) return;
-      if (Array.isArray(val) && val.length === 0) return;
-      if (typeof val === 'object' && !Array.isArray(val)) {
+      if (QUESTIONS[currentStep].optional) {} else if (val === undefined || val === null) return;else if (typeof val === 'string' && !val.trim()) return;else if (Array.isArray(val) && val.length === 0) return;else if (typeof val === 'object' && !Array.isArray(val)) {
         if (!val.current || !val.ideal) return;
       }
     }
@@ -71,9 +69,13 @@ function App() {
     setAnswers(prev => {
       const current = Array.isArray(prev[questionId]) ? prev[questionId] : [];
       const exists = current.includes(value);
+      const q = QUESTIONS.find(q => q.id === questionId);
+      const exclusive = (q && q.options || []).filter(o => o.exclusive).map(o => o.label);
+      let next;
+      if (exists) next = current.filter(v => v !== value);else if (exclusive.includes(value)) next = [value];else next = [...current.filter(v => !exclusive.includes(v)), value];
       return {
         ...prev,
-        [questionId]: exists ? current.filter(v => v !== value) : [...current, value]
+        [questionId]: next
       };
     });
   };
@@ -108,25 +110,41 @@ function App() {
       }
       formattedAnswers[headerText] = value || "";
     });
+    let token = "";
+    try {
+      token = new URLSearchParams(window.location.search).get('k') || "";
+    } catch (e) {}
     const payload = {
       projectId: CONFIG.PROJECT_ID,
       surveyKind: CONFIG.SURVEY_KIND || "Individual",
+      token: token,
       answers: formattedAnswers
     };
     try {
-      await fetch(URL, {
+      const res = await fetch(URL, {
         method: "POST",
-        mode: "no-cors",
         cache: "no-cache",
+        redirect: "follow",
         headers: {
-          "Content-Type": "text/plain"
+          "Content-Type": "text/plain;charset=utf-8"
         },
         body: JSON.stringify(payload)
       });
-      setTimeout(() => handleNext(), 500);
+      let result = null;
+      try {
+        result = await res.json();
+      } catch (e) {}
+      if (res.ok && result && result.ok === true) {
+        setSubmitError("");
+        setTimeout(() => handleNext(), 500);
+      } else {
+        const code = result && result.error || "HTTP_" + res.status;
+        console.error("Submit rejected:", code);
+        setSubmitError(code === "INVALID_TOKEN" ? "この回答用URLは無効です。ご案内したURLをもう一度お開きください。" : "回答を受け付けられませんでした。お手数ですが、担当者までご連絡ください。（" + code + "）");
+      }
     } catch (e) {
       console.error("Fetch Error:", e);
-      alert("送信中にネットワークエラーが発生しました。");
+      setSubmitError("送信中にネットワークエラーが発生しました。通信環境をご確認のうえ、もう一度 SUBMIT を押してください。");
     } finally {
       setIsSubmitting(false);
     }
@@ -143,12 +161,14 @@ function App() {
     style: {
       textShadow: '0 1px 2px rgba(0,0,0,0.95), 0 0 14px rgba(0,0,0,0.7), 0 0 28px rgba(0,0,0,0.45)'
     },
-    className: `max-w-2xl mx-auto font-light leading-[2.2] tracking-widest text-sm md:text-lg mb-16 text-center ${CONFIG === ERROR_CONFIG ? 'text-red-300' : 'text-gray-300'}`
+    className: `max-w-2xl mx-auto font-light leading-[2.2] tracking-widest text-sm md:text-lg mb-10 text-center ${CONFIG === ERROR_CONFIG ? 'text-red-300' : 'text-gray-300'}`
   }, CONFIG.TOP_DESCRIPTION.split('\n').map((line, index) => React.createElement(React.Fragment, {
     key: index
   }, line, React.createElement("br", {
     className: "hidden md:block"
-  })))), CONFIG !== ERROR_CONFIG && React.createElement("button", {
+  })))), CONFIG !== ERROR_CONFIG && CONFIG.PRIVACY_NOTE && React.createElement("p", {
+    className: "max-w-xl mx-auto text-[11px] md:text-xs text-art-muted leading-relaxed mb-10 text-center whitespace-pre-line"
+  }, CONFIG.PRIVACY_NOTE), CONFIG !== ERROR_CONFIG && React.createElement("button", {
     onClick: () => {
       if (isAnimating) return;
       setIsAnimating(true);
@@ -220,7 +240,7 @@ function App() {
     className: `w-5 h-5 md:w-6 md:h-6 rounded-full border flex items-center justify-center text-[9px] ${row.ideal ? 'bg-art-accentPeach border-art-accentPeach text-art-bg font-bold' : 'border-art-border'}`
   }, row.ideal ? '◆' : ''))))), React.createElement("p", {
     className: "text-xs md:text-sm text-art-muted/80 italic mb-6"
-  }, "\u203B \u6DF1\u304F\u60A9\u307E\u305A\u3001\u6700\u521D\u306B\u601D\u3044\u6D6E\u304B\u3093\u3060\u611F\u899A\u3067\u304A\u9078\u3073\u304F\u3060\u3055\u3044\u3002"), React.createElement("div", {
+  }, "\u203B \u6DF1\u304F\u60A9\u307E\u305A\u3001\u6700\u521D\u306B\u601D\u3044\u6D6E\u304B\u3093\u3060\u611F\u899A\u3067\u304A\u9078\u3073\u304F\u3060\u3055\u3044\u3002", React.createElement("br", null), "\u203B \u300C5\u300D\u304C\u6B63\u89E3\u3068\u3044\u3046\u308F\u3051\u3067\u306F\u3042\u308A\u307E\u305B\u3093\u30023\u5E74\u5F8C\u306E\u7406\u60F3\u306F\u3001\u8CB4\u793E\u306B\u3068\u3063\u3066\u6700\u9069\u3060\u3068\u601D\u3046\u6BB5\u968E\u3092\u304A\u9078\u3073\u304F\u3060\u3055\u3044\uFF08\u73FE\u72B6\u3068\u540C\u3058\u3067\u3082\u69CB\u3044\u307E\u305B\u3093\uFF09\u3002"), React.createElement("div", {
     className: "flex justify-end"
   }, React.createElement("button", {
     onClick: () => {
@@ -373,8 +393,8 @@ function App() {
   }), CONFIG !== ERROR_CONFIG && React.createElement("div", {
     className: "mt-3 md:mt-4 flex justify-end"
   }, React.createElement("button", {
-    onClick: handleNext,
-    disabled: !answers[q.id]?.trim(),
+    onClick: () => handleNext(),
+    disabled: !q.optional && !answers[q.id]?.trim(),
     className: "px-8 py-2.5 border border-art-text text-art-text hover:bg-art-text hover:text-art-bg transition-all disabled:opacity-20 uppercase tracking-widest text-sm"
   }, "NEXT")))));
   return React.createElement("div", {
@@ -399,7 +419,10 @@ function App() {
     onClick: handleSubmit,
     disabled: isSubmitting,
     className: "px-16 py-5 border border-art-accentGreen text-art-accentGreen hover:bg-art-accentGreen hover:text-art-bg transition-all text-xl tracking-widest uppercase disabled:opacity-50"
-  }, isSubmitting ? 'SUBMITTING...' : 'SUBMIT'), React.createElement("button", {
+  }, isSubmitting ? 'SUBMITTING...' : 'SUBMIT'), submitError && React.createElement("p", {
+    role: "alert",
+    className: "max-w-md text-sm leading-relaxed text-art-accentPeach border border-art-accentPeach/60 px-4 py-3"
+  }, submitError), React.createElement("button", {
     onClick: () => {
       setIsAnimating(true);
       setTimeout(() => {

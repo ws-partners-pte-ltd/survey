@@ -19,15 +19,17 @@
             const [isAnimating, setIsAnimating] = useState(false);
             const [isSubmitting, setIsSubmitting] = useState(false);
             const [showOrientation, setShowOrientation] = useState(false);
+            const [submitError, setSubmitError] = useState("");
             const handleNext = (force = false) => {
                 if (isAnimating) return;
                 if (force !== true && currentStep >= 0 && currentStep < QUESTIONS.length) {
                     const qId = QUESTIONS[currentStep].id;
                     const val = answers[qId];
+                    if (QUESTIONS[currentStep].optional) { /* 任意設問：未回答で進める */ } else
                     if (val === undefined || val === null) return;
-                    if (typeof val === 'string' && !val.trim()) return;
-                    if (Array.isArray(val) && val.length === 0) return;
-                    if (typeof val === 'object' && !Array.isArray(val)) {
+                    else if (typeof val === 'string' && !val.trim()) return;
+                    else if (Array.isArray(val) && val.length === 0) return;
+                    else if (typeof val === 'object' && !Array.isArray(val)) {
                         if (!val.current || !val.ideal) return;
                     }
                 }
@@ -48,10 +50,13 @@
                 setAnswers(prev => {
                     const current = Array.isArray(prev[questionId]) ? prev[questionId] : [];
                     const exists = current.includes(value);
-                    return {
-                        ...prev,
-                        [questionId]: exists ? current.filter(v => v !== value) : [...current, value]
-                    };
+                    const q = QUESTIONS.find(q => q.id === questionId);
+                    const exclusive = ((q && q.options) || []).filter(o => o.exclusive).map(o => o.label);
+                    let next;
+                    if (exists) next = current.filter(v => v !== value);
+                    else if (exclusive.includes(value)) next = [value];
+                    else next = [...current.filter(v => !exclusive.includes(v)), value];
+                    return { ...prev, [questionId]: next };
                 });
                 // 複数選択：自動進行しない。NEXTボタンで進む
             };
@@ -81,23 +86,40 @@
                     }
                     formattedAnswers[headerText] = value || "";
                 });
+                // 招待トークン：案内URLの ?k=... を受付側（GAS）で照合する
+                let token = "";
+                try { token = new URLSearchParams(window.location.search).get('k') || ""; } catch (e) {}
                 const payload = {
                     projectId: CONFIG.PROJECT_ID,
                     surveyKind: CONFIG.SURVEY_KIND || "Individual",
+                    token: token,
                     answers: formattedAnswers
                 };
+                // 受付結果（{ok:true}）を確認してから完了画面へ進む。記録されていないのに
+                // 「ありがとうございました」と表示される事故を防ぐ。
                 try {
-                    await fetch(URL, {
+                    const res = await fetch(URL, {
                         method: "POST",
-                        mode: "no-cors",
                         cache: "no-cache",
-                        headers: { "Content-Type": "text/plain" },
+                        redirect: "follow",
+                        headers: { "Content-Type": "text/plain;charset=utf-8" },
                         body: JSON.stringify(payload)
                     });
-                    setTimeout(() => handleNext(), 500);
+                    let result = null;
+                    try { result = await res.json(); } catch (e) {}
+                    if (res.ok && result && result.ok === true) {
+                        setSubmitError("");
+                        setTimeout(() => handleNext(), 500);
+                    } else {
+                        const code = (result && result.error) || ("HTTP_" + res.status);
+                        console.error("Submit rejected:", code);
+                        setSubmitError(code === "INVALID_TOKEN"
+                            ? "この回答用URLは無効です。ご案内したURLをもう一度お開きください。"
+                            : "回答を受け付けられませんでした。お手数ですが、担当者までご連絡ください。（" + code + "）");
+                    }
                 } catch (e) {
                     console.error("Fetch Error:", e);
-                    alert("送信中にネットワークエラーが発生しました。");
+                    setSubmitError("送信中にネットワークエラーが発生しました。通信環境をご確認のうえ、もう一度 SUBMIT を押してください。");
                 } finally {
                     setIsSubmitting(false);
                 }
@@ -112,13 +134,16 @@
                     </h2>
                     <p
                         style={{ textShadow: '0 1px 2px rgba(0,0,0,0.95), 0 0 14px rgba(0,0,0,0.7), 0 0 28px rgba(0,0,0,0.45)' }}
-                        className={`max-w-2xl mx-auto font-light leading-[2.2] tracking-widest text-sm md:text-lg mb-16 text-center ${CONFIG === ERROR_CONFIG ? 'text-red-300' : 'text-gray-300'}`}>
+                        className={`max-w-2xl mx-auto font-light leading-[2.2] tracking-widest text-sm md:text-lg mb-10 text-center ${CONFIG === ERROR_CONFIG ? 'text-red-300' : 'text-gray-300'}`}>
                         {CONFIG.TOP_DESCRIPTION.split('\n').map((line, index) => (
                             <React.Fragment key={index}>
                                 {line}<br className="hidden md:block" />
                             </React.Fragment>
                         ))}
                     </p>
+                    {CONFIG !== ERROR_CONFIG && CONFIG.PRIVACY_NOTE && (
+                        <p className="max-w-xl mx-auto text-[11px] md:text-xs text-art-muted leading-relaxed mb-10 text-center whitespace-pre-line">{CONFIG.PRIVACY_NOTE}</p>
+                    )}
                     {CONFIG !== ERROR_CONFIG && (
                         <button onClick={() => { if (isAnimating) return; setIsAnimating(true); setTimeout(() => { setShowOrientation(true); setIsAnimating(false); }, 600); }} className="group flex items-center justify-center gap-4 border border-art-accentYellow text-art-accentYellow px-14 py-4 uppercase tracking-[0.3em] text-sm md:text-base transition-all duration-700 hover:bg-art-accentYellow hover:text-art-bg hover:scale-105">
                             START SURVEY
@@ -164,7 +189,8 @@
                             </div>
                         </div>
                         <p className="text-xs md:text-sm text-art-muted/80 italic mb-6">
-                            ※ 深く悩まず、最初に思い浮かんだ感覚でお選びください。
+                            ※ 深く悩まず、最初に思い浮かんだ感覚でお選びください。<br/>
+                            ※ 「5」が正解というわけではありません。3年後の理想は、貴社にとって最適だと思う段階をお選びください（現状と同じでも構いません）。
                         </p>
                         <div className="flex justify-end">
                             <button onClick={() => { if (isAnimating) return; setIsAnimating(true); setTimeout(() => { setShowOrientation(false); setCurrentStep(0); setIsAnimating(false); }, 600); }} className="px-10 py-3 border border-art-accentYellow text-art-accentYellow hover:bg-art-accentYellow hover:text-art-bg transition-all uppercase tracking-widest text-sm">
@@ -303,7 +329,7 @@
                                 />
                                 {CONFIG !== ERROR_CONFIG && (
                                     <div className="mt-3 md:mt-4 flex justify-end">
-                                        <button onClick={handleNext} disabled={!answers[q.id]?.trim()} className="px-8 py-2.5 border border-art-text text-art-text hover:bg-art-text hover:text-art-bg transition-all disabled:opacity-20 uppercase tracking-widest text-sm">NEXT</button>
+                                        <button onClick={() => handleNext()} disabled={!q.optional && !answers[q.id]?.trim()} className="px-8 py-2.5 border border-art-text text-art-text hover:bg-art-text hover:text-art-bg transition-all disabled:opacity-20 uppercase tracking-widest text-sm">NEXT</button>
                                     </div>
                                 )}
                             </div>
@@ -331,6 +357,9 @@
                                     <button onClick={handleSubmit} disabled={isSubmitting} className="px-16 py-5 border border-art-accentGreen text-art-accentGreen hover:bg-art-accentGreen hover:text-art-bg transition-all text-xl tracking-widest uppercase disabled:opacity-50">
                                         {isSubmitting ? 'SUBMITTING...' : 'SUBMIT'}
                                     </button>
+                                    {submitError && (
+                                        <p role="alert" className="max-w-md text-sm leading-relaxed text-art-accentPeach border border-art-accentPeach/60 px-4 py-3">{submitError}</p>
+                                    )}
                                     <button
                                         onClick={() => { setIsAnimating(true); setTimeout(() => { setCurrentStep(prev => prev - 1); setIsAnimating(false); }, 600); }}
                                         disabled={isSubmitting}

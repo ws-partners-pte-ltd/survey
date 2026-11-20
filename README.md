@@ -72,4 +72,8 @@ node build.js      # テンプレ＋全案件フォルダの app.js を最新エ
 
 - **ブラウザ内Babel（`@babel/standalone` のCDN読み込み・`type="text/babel"`）は使わない。** 必ず事前コンパイル。
 - **React/ReactDOM は `assets/` のローカル同梱を使う**（外部CDNを実行時に読み込まない）。
+- **Tailwind も事前ビルド**（`assets/tailwind-<service>.css`）。`cdn.tailwindcss.com` を読み込まない。クラスや配色を変えたら `node tools/build.js`。配色は `tools/tailwind.<service>.config.js`、独自CSSは `tools/styles/<service>.css`。
+- **`index.html` に CSP を入れている**（スクリプトは自サイトのみ、送信先は script.google.com のみ）。インラインの `<script>`・`<style>`・`onclick=` などは CSP で止まるので書かない。`index.html` はテンプレートを直し、`build.js` で全案件へ同期する。
+- **組織最適化サーベイの回答URLは招待トークン付きで案内する**（`.../2026/?k=<トークン>`）。トークンは受付側（GAS: WSP_Radar_Database）の `PROJECTS` に登録したものと一致しないと記録されない。トークンをこのリポジトリに書かない。
+- 公開ソースに社内向けの言葉（設問IDやコメントを含む）を書かない。
 - 詳細な背景は survey-generator スキルの `references/web-survey-deploy-guardrail.md` を参照。
