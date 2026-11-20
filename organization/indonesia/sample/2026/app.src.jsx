@@ -229,7 +229,7 @@
                                 style={{ width: `${Math.round(((i+1) / QUESTIONS.length) * 100)}%` }}
                             ></div>
                         </div>
-                        <h2 className="text-base md:text-xl font-light text-art-text mb-4 md:mb-6 leading-snug tracking-wide text-center md:text-left">{q.question}</h2>
+                        <h2 className="text-base md:text-xl font-light text-art-text mb-4 md:mb-6 leading-snug tracking-wide text-center md:text-left">{q.question}{q.optional ? "（任意）" : ""}</h2>
 
                         {q.type === 'choice' && (
                             <div className="space-y-1.5 md:space-y-2">

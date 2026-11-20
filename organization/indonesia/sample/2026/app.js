@@ -293,7 +293,7 @@ function App() {
     }
   })), React.createElement("h2", {
     className: "text-base md:text-xl font-light text-art-text mb-4 md:mb-6 leading-snug tracking-wide text-center md:text-left"
-  }, q.question), q.type === 'choice' && React.createElement("div", {
+  }, q.question, q.optional ? "（任意）" : ""), q.type === 'choice' && React.createElement("div", {
     className: "space-y-1.5 md:space-y-2"
   }, q.options.map((opt, idx) => React.createElement("button", {
     key: idx,
