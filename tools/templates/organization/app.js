@@ -40,6 +40,14 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showOrientation, setShowOrientation] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [showProfile, setShowProfile] = useState(false);
+  const [profile, setProfile] = useState({
+    company: typeof CONFIG.COMPANY === 'string' ? CONFIG.COMPANY : '',
+    dept: '',
+    title: '',
+    lastName: '',
+    firstName: ''
+  });
   const handleNext = (force = false) => {
     if (isAnimating) return;
     if (force !== true && currentStep >= 0 && currentStep < QUESTIONS.length) {
@@ -118,6 +126,13 @@ function App() {
       projectId: CONFIG.PROJECT_ID,
       surveyKind: CONFIG.SURVEY_KIND || "Individual",
       token: token,
+      respondent: {
+        "会社名": (profile.company || "").trim(),
+        "部署": (profile.dept || "").trim(),
+        "役職": (profile.title || "").trim(),
+        "姓": (profile.lastName || "").trim(),
+        "名": (profile.firstName || "").trim()
+      },
       answers: formattedAnswers
     };
     if (!CONFIG.VERIFY_SUBMIT) {
@@ -193,12 +208,69 @@ function App() {
       if (isAnimating) return;
       setIsAnimating(true);
       setTimeout(() => {
-        setShowOrientation(true);
+        setShowProfile(true);
         setIsAnimating(false);
       }, 600);
     },
     className: "group flex items-center justify-center gap-4 border border-art-accentYellow text-art-accentYellow px-14 py-4 uppercase tracking-[0.3em] text-sm md:text-base transition-all duration-700 hover:bg-art-accentYellow hover:text-art-bg hover:scale-105"
   }, "START SURVEY"));
+  const profileField = (label, key, required, readOnly) => React.createElement("div", {
+    className: "mb-4"
+  }, React.createElement("label", {
+    className: "block text-xs uppercase tracking-widest text-art-muted mb-1"
+  }, label, required && React.createElement("span", {
+    className: "text-art-accentPeach"
+  }, " *")), React.createElement("input", {
+    type: "text",
+    value: profile[key],
+    readOnly: readOnly,
+    maxLength: 100,
+    autoComplete: "off",
+    onChange: e => setProfile({
+      ...profile,
+      [key]: e.target.value
+    }),
+    className: `w-full bg-transparent border-b ${readOnly ? 'border-art-border/40 text-art-muted' : 'border-art-border focus:border-art-accentPeach'} pt-1 pb-2 text-sm md:text-base outline-none transition-colors`
+  }));
+  const renderProfile = () => {
+    const companyLocked = !!(typeof CONFIG.COMPANY === 'string' && CONFIG.COMPANY);
+    const ready = (profile.company || '').trim() && (profile.dept || '').trim() && (profile.title || '').trim() && (profile.lastName || '').trim() && (profile.firstName || '').trim();
+    return React.createElement("div", {
+      className: `transition-all duration-700 ease-in-out transform ${isAnimating ? 'opacity-0 translate-x-10' : 'opacity-100 translate-x-0'} w-full max-w-2xl mx-auto px-6 sm:px-10 flex-1 flex flex-col justify-center`
+    }, React.createElement("div", {
+      className: "w-full"
+    }, React.createElement("span", {
+      className: "text-art-accentPeach text-xs uppercase mb-2 tracking-widest text-center md:text-left block"
+    }, "Profile"), React.createElement("h2", {
+      className: "text-xl md:text-2xl font-normal text-art-text mb-2 leading-snug tracking-wide"
+    }, "\u3054\u56DE\u7B54\u8005\u306B\u3064\u3044\u3066\u6559\u3048\u3066\u304F\u3060\u3055\u3044"), React.createElement("p", {
+      className: "text-sm text-art-muted leading-relaxed mb-6"
+    }, React.createElement("span", {
+      className: "text-art-accentPeach"
+    }, "*"), "\u306F\u5FC5\u9808\u9805\u76EE\u3067\u3059\u3002"), profileField('会社名', 'company', true, companyLocked), profileField('部署', 'dept', true, false), profileField('役職', 'title', true, false), React.createElement("div", {
+      className: "flex gap-4"
+    }, React.createElement("div", {
+      className: "flex-1"
+    }, profileField('姓', 'lastName', true, false)), React.createElement("div", {
+      className: "flex-1"
+    }, profileField('名', 'firstName', true, false))), CONFIG.PROFILE_NOTE && React.createElement("p", {
+      className: "text-[11px] md:text-xs text-art-muted leading-relaxed mt-2 whitespace-pre-line"
+    }, CONFIG.PROFILE_NOTE), React.createElement("div", {
+      className: "mt-6 flex justify-end"
+    }, React.createElement("button", {
+      onClick: () => {
+        if (isAnimating || !ready) return;
+        setIsAnimating(true);
+        setTimeout(() => {
+          setShowProfile(false);
+          setShowOrientation(true);
+          setIsAnimating(false);
+        }, 600);
+      },
+      disabled: !ready,
+      className: "px-10 py-3 border border-art-accentYellow text-art-accentYellow hover:bg-art-accentYellow hover:text-art-bg transition-all disabled:opacity-20 uppercase tracking-widest text-sm"
+    }, "\u6B21\u3078"))));
+  };
   const renderOrientation = () => React.createElement("div", {
     className: `transition-all duration-700 ease-in-out transform ${isAnimating ? 'opacity-0 translate-x-10' : 'opacity-100 translate-x-0'} w-full max-w-3xl mx-auto px-6 sm:px-10 flex-1 flex flex-col justify-center`
   }, React.createElement("div", {
@@ -420,14 +492,14 @@ function App() {
   return React.createElement("div", {
     className: "min-h-screen relative flex flex-col w-full"
   }, React.createElement("div", {
-    className: `radar-container ${currentStep === -1 && !showOrientation ? 'top-mode' : 'survey-mode'}`
+    className: `radar-container ${currentStep === -1 && !showOrientation && !showProfile ? 'top-mode' : 'survey-mode'}`
   }, React.createElement("div", {
     className: "radar-sweep"
   }), React.createElement("div", {
     className: "radar-pulse-ring"
   })), React.createElement("main", {
     className: "flex-1 flex flex-col justify-center relative z-10 min-h-screen w-full py-10 md:py-12"
-  }, currentStep === -1 && !showOrientation && renderStart(), currentStep === -1 && showOrientation && renderOrientation(), currentStep >= 0 && currentStep < QUESTIONS.length && renderQuestion(QUESTIONS[currentStep], currentStep), currentStep === QUESTIONS.length && React.createElement("div", {
+  }, currentStep === -1 && !showOrientation && !showProfile && renderStart(), currentStep === -1 && showProfile && renderProfile(), currentStep === -1 && showOrientation && renderOrientation(), currentStep >= 0 && currentStep < QUESTIONS.length && renderQuestion(QUESTIONS[currentStep], currentStep), currentStep === QUESTIONS.length && React.createElement("div", {
     className: "flex-1 flex flex-col items-center justify-center px-6 text-center"
   }, React.createElement("h2", {
     className: "text-4xl md:text-6xl font-light text-gradient mb-8 tracking-tighter uppercase"
@@ -458,7 +530,7 @@ function App() {
     className: "text-5xl md:text-8xl font-light text-gradient mb-8 tracking-tighter"
   }, "\u3042\u308A\u304C\u3068\u3046\u3054\u3056\u3044\u307E\u3057\u305F"), React.createElement("p", {
     className: "text-art-muted text-lg tracking-widest leading-relaxed"
-  }, "\u8CB4\u91CD\u306A\u3054\u610F\u898B\u3092\u3044\u305F\u3060\u304D\u3001\u5FC3\u3088\u308A\u611F\u8B1D\u7533\u3057\u4E0A\u3052\u307E\u3059\u3002", React.createElement("br", null), "\u96C6\u8A08\u5F8C\u3001AI\u306B\u3088\u308B\u5206\u6790\u3092\u884C\u3044\u3001\u7D44\u7E54\u5909\u9769\u306B\u6D3B\u7528\u3055\u305B\u3066\u3044\u305F\u3060\u304D\u307E\u3059\u3002"))), currentStep === -1 && !showOrientation && React.createElement("div", {
+  }, "\u8CB4\u91CD\u306A\u3054\u610F\u898B\u3092\u3044\u305F\u3060\u304D\u3001\u5FC3\u3088\u308A\u611F\u8B1D\u7533\u3057\u4E0A\u3052\u307E\u3059\u3002", React.createElement("br", null), "\u96C6\u8A08\u5F8C\u3001AI\u306B\u3088\u308B\u5206\u6790\u3092\u884C\u3044\u3001\u7D44\u7E54\u5909\u9769\u306B\u6D3B\u7528\u3055\u305B\u3066\u3044\u305F\u3060\u304D\u307E\u3059\u3002"))), currentStep === -1 && !showOrientation && !showProfile && React.createElement("div", {
     className: "fixed bottom-12 right-12 md:bottom-16 md:right-16 text-right z-40 pointer-events-none"
   }, React.createElement("div", {
     className: "text-art-text font-light tracking-[0.2em] text-sm md:text-base opacity-70"

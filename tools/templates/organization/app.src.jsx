@@ -20,6 +20,9 @@
             const [isSubmitting, setIsSubmitting] = useState(false);
             const [showOrientation, setShowOrientation] = useState(false);
             const [submitError, setSubmitError] = useState("");
+            const [showProfile, setShowProfile] = useState(false);
+            // 回答者情報は画面のメモリ上だけで持つ（URL・localStorage・Cookie には書かない）
+            const [profile, setProfile] = useState({ company: (typeof CONFIG.COMPANY === 'string' ? CONFIG.COMPANY : ''), dept: '', title: '', lastName: '', firstName: '' });
             const handleNext = (force = false) => {
                 if (isAnimating) return;
                 if (force !== true && currentStep >= 0 && currentStep < QUESTIONS.length) {
@@ -93,6 +96,13 @@
                     projectId: CONFIG.PROJECT_ID,
                     surveyKind: CONFIG.SURVEY_KIND || "Individual",
                     token: token,
+                    respondent: {
+                        "会社名": (profile.company || "").trim(),
+                        "部署": (profile.dept || "").trim(),
+                        "役職": (profile.title || "").trim(),
+                        "姓": (profile.lastName || "").trim(),
+                        "名": (profile.firstName || "").trim()
+                    },
                     answers: formattedAnswers
                 };
                 // VERIFY_SUBMIT が false の間は従来どおり応答を読まずに送る（旧受付スクリプト互換）。
@@ -159,12 +169,46 @@
                         <p className="max-w-xl mx-auto text-[11px] md:text-xs text-art-muted leading-relaxed mb-10 text-center whitespace-pre-line">{CONFIG.PRIVACY_NOTE}</p>
                     )}
                     {CONFIG !== ERROR_CONFIG && (
-                        <button onClick={() => { if (isAnimating) return; setIsAnimating(true); setTimeout(() => { setShowOrientation(true); setIsAnimating(false); }, 600); }} className="group flex items-center justify-center gap-4 border border-art-accentYellow text-art-accentYellow px-14 py-4 uppercase tracking-[0.3em] text-sm md:text-base transition-all duration-700 hover:bg-art-accentYellow hover:text-art-bg hover:scale-105">
+                        <button onClick={() => { if (isAnimating) return; setIsAnimating(true); setTimeout(() => { setShowProfile(true); setIsAnimating(false); }, 600); }} className="group flex items-center justify-center gap-4 border border-art-accentYellow text-art-accentYellow px-14 py-4 uppercase tracking-[0.3em] text-sm md:text-base transition-all duration-700 hover:bg-art-accentYellow hover:text-art-bg hover:scale-105">
                             START SURVEY
                         </button>
                     )}
                 </div>
             );
+            const profileField = (label, key, required, readOnly) => (
+                <div className="mb-4">
+                    <label className="block text-xs uppercase tracking-widest text-art-muted mb-1">{label}{required && <span className="text-art-accentPeach"> *</span>}</label>
+                    <input type="text" value={profile[key]} readOnly={readOnly} maxLength={100} autoComplete="off"
+                        onChange={e => setProfile({ ...profile, [key]: e.target.value })}
+                        className={`w-full bg-transparent border-b ${readOnly ? 'border-art-border/40 text-art-muted' : 'border-art-border focus:border-art-accentPeach'} pt-1 pb-2 text-sm md:text-base outline-none transition-colors`} />
+                </div>
+            );
+            const renderProfile = () => {
+                const companyLocked = !!(typeof CONFIG.COMPANY === 'string' && CONFIG.COMPANY);
+                const ready = (profile.company || '').trim() && (profile.dept || '').trim() && (profile.title || '').trim() && (profile.lastName || '').trim() && (profile.firstName || '').trim();
+                return (
+                <div className={`transition-all duration-700 ease-in-out transform ${isAnimating ? 'opacity-0 translate-x-10' : 'opacity-100 translate-x-0'} w-full max-w-2xl mx-auto px-6 sm:px-10 flex-1 flex flex-col justify-center`}>
+                    <div className="w-full">
+                        <span className="text-art-accentPeach text-xs uppercase mb-2 tracking-widest text-center md:text-left block">Profile</span>
+                        <h2 className="text-xl md:text-2xl font-normal text-art-text mb-2 leading-snug tracking-wide">ご回答者について教えてください</h2>
+                        <p className="text-sm text-art-muted leading-relaxed mb-6"><span className="text-art-accentPeach">*</span>は必須項目です。</p>
+                        {profileField('会社名', 'company', true, companyLocked)}
+                        {profileField('部署', 'dept', true, false)}
+                        {profileField('役職', 'title', true, false)}
+                        <div className="flex gap-4">
+                            <div className="flex-1">{profileField('姓', 'lastName', true, false)}</div>
+                            <div className="flex-1">{profileField('名', 'firstName', true, false)}</div>
+                        </div>
+                        {CONFIG.PROFILE_NOTE && (
+                            <p className="text-[11px] md:text-xs text-art-muted leading-relaxed mt-2 whitespace-pre-line">{CONFIG.PROFILE_NOTE}</p>
+                        )}
+                        <div className="mt-6 flex justify-end">
+                            <button onClick={() => { if (isAnimating || !ready) return; setIsAnimating(true); setTimeout(() => { setShowProfile(false); setShowOrientation(true); setIsAnimating(false); }, 600); }} disabled={!ready} className="px-10 py-3 border border-art-accentYellow text-art-accentYellow hover:bg-art-accentYellow hover:text-art-bg transition-all disabled:opacity-20 uppercase tracking-widest text-sm">次へ</button>
+                        </div>
+                    </div>
+                </div>
+                );
+            };
             const renderOrientation = () => (
                 <div className={`transition-all duration-700 ease-in-out transform ${isAnimating ? 'opacity-0 translate-x-10' : 'opacity-100 translate-x-0'} w-full max-w-3xl mx-auto px-6 sm:px-10 flex-1 flex flex-col justify-center`}>
                     <div className="w-full">
@@ -353,13 +397,14 @@
             );
             return (
                 <div className="min-h-screen relative flex flex-col w-full">
-                    <div className={`radar-container ${(currentStep === -1 && !showOrientation) ? 'top-mode' : 'survey-mode'}`}>
+                    <div className={`radar-container ${(currentStep === -1 && !showOrientation && !showProfile) ? 'top-mode' : 'survey-mode'}`}>
                         <div className="radar-sweep"></div>
                         <div className="radar-pulse-ring"></div>
                     </div>
 
                     <main className="flex-1 flex flex-col justify-center relative z-10 min-h-screen w-full py-10 md:py-12">
-                        {currentStep === -1 && !showOrientation && renderStart()}
+                        {currentStep === -1 && !showOrientation && !showProfile && renderStart()}
+                        {currentStep === -1 && showProfile && renderProfile()}
                         {currentStep === -1 && showOrientation && renderOrientation()}
                         {currentStep >= 0 && currentStep < QUESTIONS.length && renderQuestion(QUESTIONS[currentStep], currentStep)}
 
@@ -392,7 +437,7 @@
                             </div>
                         )}
                     </main>
-                    {currentStep === -1 && !showOrientation && (
+                    {currentStep === -1 && !showOrientation && !showProfile && (
                         <div className="fixed bottom-12 right-12 md:bottom-16 md:right-16 text-right z-40 pointer-events-none">
                             <div className="text-art-text font-light tracking-[0.2em] text-sm md:text-base opacity-70">
                                 WS PARTNERS PTE LTD
