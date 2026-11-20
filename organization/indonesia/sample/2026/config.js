@@ -10,8 +10,8 @@
 const WSP_CONFIG = {
     PROJECT_ID: "ORG_OPTIMIZATION_v2_2026",
     SURVEY_KIND: "Organizational",
-    // 受付側（GAS）が応答を返す版になったら true にする（記録の成否を確認してから完了画面を出す）
-    VERIFY_SUBMIT: false,
+    // 受付側（GAS Version 15 以降）の応答を確認してから完了画面を出す。false にすると確認せずに送る
+    VERIFY_SUBMIT: true,
     TOP_HEADING: "10分の対話、現地化の理想と現状のGAPを可視化。",
     TOP_DESCRIPTION:
         "経営の現地化に「正解」はありません。\n" +
